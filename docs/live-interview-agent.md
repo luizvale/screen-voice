@@ -1,0 +1,20 @@
+# Copiloto de entrevista com GPT Live
+
+Esta versão usa três papéis: candidato no microfone, entrevistador no áudio de saída do Windows e copiloto no fone. O programa captura os dois canais humanos separadamente, estima qual fonte está dominante a cada 20 ms e envia ao GPT Live uma mistura mono PCM16 de 24 kHz. A fonte dominante entra como contexto; isso **não é diarização confiável**. Sobreposição de falas e vazamento do fone podem confundir a atribuição.
+
+O atalho `Ctrl+Alt+L` controla a reprodução **local**. Ao desligar, a fila de áudio é apagada imediatamente, mas o WebSocket continua transmitindo áudio e mantendo contexto. O programa também pede silêncio ao modelo, mas a garantia de não ouvir a resposta está na fila local. Ao religar, ele pede uma dica sobre a pergunta recente ou uma confirmação curta se não houver pergunta. Pedidos diretos do candidato também recebem resposta. Perguntas que exigem análise usam a delegação Responses com `gpt-6-luna`, o que acrescenta custo à sessão. `Ctrl+Alt+Shift+L` solicita `session.close` e aguarda `session.closed` para finalizar a cobrança.
+
+O microfone e o loopback da saída padrão foram escolhidos porque são fontes distinguíveis sem tentar reconhecer identidades pela voz. A fala do agente usa a voz brasileira `bossa` do GPT Live. Durante a reprodução do agente, a captura do loopback é suspensa para reduzir realimentação. Isso perde parte da fala remota nesse intervalo; para uma versão de maior confiança, usar um dispositivo de áudio virtual separado para a chamada e uma captura que exclua o processo do copiloto.
+
+O uso do GPT Live e dos eventos `session.start`, `session.input_audio.append`, `session.output_audio.delta` e `session.close` segue a [documentação oficial da OpenAI para WebSockets](https://developers.openai.com/api/docs/guides/voice-websockets). A mudança de instruções e a atualização de contexto seguem [Managing GPT-Live sessions](https://developers.openai.com/api/docs/guides/live-conversations). O backend de análise segue [Delegation and tools in GPT-Live](https://developers.openai.com/api/docs/guides/live-delegation). O AI Engineer enfatiza que detecção de turnos e interrupções são componentes da experiência, além da escolha do modelo: [Designing Voice Agents for Real Conversations — 3:54](https://www.youtube.com/watch?v=hMlLw1LeIK8&t=234). A limitação de identificar quem falou e de tratar falas sobrepostas está em [Beyond Transcription: Building Voice AI That Actually Understands Conversations — 10:41](https://www.youtube.com/watch?v=mFLlVpnGpds&t=641).
+
+## Teste de aceitação manual
+
+1. Confirme que o microfone padrão é o microfone físico e a saída padrão é o fone usado na chamada.
+2. Inicie uma chamada simulada com outra pessoa ou outro dispositivo. Abra o executável e confira `session.started` no log. O agente deve começar calado.
+3. Faça uma pergunta na chamada e responda pelo microfone, com pausas e uma interrupção. Ative `Ctrl+Alt+L`: a dica deve se referir à pergunta, ser breve e não aparecer no microfone da chamada.
+4. Desative enquanto ele fala: o áudio deve parar logo, mas uma nova pergunta deve permanecer no contexto ao religar.
+5. Teste duas vozes simultâneas. O agente não deve afirmar uma atribuição de fala incerta. Confira os erros no log.
+6. Encerre com `Ctrl+Alt+Shift+L` e confirme `session.closed` no log. Se não chegar em 15 segundos, o log registra a falta de confirmação.
+
+O primeiro teste real confirmou que o modelo identificou uma terceira voz, mas produziu apenas uma abertura sem concluir a dica. A versão seguinte pede uma sugestão completa, oferece backend para análise e usa uma fila inicial de áudio de 50 ms antes de reproduzir. Ainda é preciso validar essa correção em chamada real. O log registra a cada dez segundos apenas contagens de atividade e de áudio recebido, sem guardar o áudio ou a transcrição. A API recebe a conversa durante toda a sessão, inclusive quando a resposta está desligada.
