@@ -45,10 +45,20 @@ cargo build --release --bin screen-voice-live
 .\target\release\screen-voice-live.exe
 ```
 
-O executável não abre console. `Ctrl+Alt+L` alterna a fala do copiloto; ele começa calado e **continua ouvindo enquanto a fala está desligada**. `Ctrl+Alt+Shift+L` encerra a sessão e a cobrança. O registro de estado e erros fica em `%LOCALAPPDATA%\screen-voice\screen-voice-live.log`; não inclui gravações ou transcrições.
+O executável não abre console. Ele começa calado e **continua ouvindo enquanto não fala**. Durante uma simulação consentida com um amigo, use:
+
+| Atalho | Ação |
+| --- | --- |
+| `Ctrl+Alt+H` | Pede a próxima pista curta sobre a pergunta atual. |
+| `Ctrl+Alt+A` | Pede uma resposta mais completa para estudo. |
+| `Ctrl+Alt+E` | Captura o monitor principal, identifica o exercício visível e pede a primeira pista. |
+| `Ctrl+Alt+L` | Interrompe a fala atual; a escuta continua. |
+| `Ctrl+Alt+Shift+L` | Encerra a sessão e a cobrança. |
+
+A dica espera uma pausa de cerca de meio segundo antes de tocar e é cortada quando uma nova fala é detectada. `Ctrl+Alt+E` envia a captura à API OpenAI somente quando acionado. O registro de estado e erros fica em `%LOCALAPPDATA%\screen-voice\screen-voice-live.log`; não inclui gravações, transcrições ou capturas.
 
 Para conferir os dispositivos de áudio sem usar a API, execute `.\target\release\screen-voice-live.exe --check-audio` e leia a última linha do log. Essa verificação dura dois segundos e informa se o microfone e o loopback da saída foram inicializados; ela não comprova ainda a qualidade de uma chamada real.
 
-Ao ativar, `Ctrl+Alt+L` também pede uma confirmação curta em voz. Você pode então dizer algo diretamente ao agente, como “me ajude a responder a última pergunta”. Se não houver som, execute `.\target\release\screen-voice-live.exe --check-output`: ele toca um tom curto na saída padrão sem usar a API. O log registra a cada dez segundos somente a duração de atividade de cada fonte, a quantidade de trechos transcritos e de blocos de áudio recebidos, sem guardar a conversa.
+Se não houver som, execute `.\target\release\screen-voice-live.exe --check-output`: ele toca um tom curto na saída padrão sem usar a API. O log registra a cada dez segundos somente a duração de atividade de cada fonte, a quantidade de trechos transcritos e de blocos de áudio recebidos, sem guardar a conversa. O [desenho, pesquisa e roteiro de aceitação](docs/production-voice-agent.md) explicam o que foi implementado e o que falta validar.
 
 Esta primeira versão identifica **fontes de áudio**, não pessoas por biometria: microfone sugere candidato, saída do computador sugere entrevistador. Quando as vozes se sobrepõem, a identificação pode falhar. Para reduzir eco, o programa suspende a captura da saída enquanto reproduz a voz do agente; nesse intervalo pode perder parte da fala do entrevistador. Faça primeiro um teste curto com uma chamada simulada e confira a atribuição e o áudio antes de depender das dicas. A sessão GPT Live é cobrada pelo tempo em que fica conectada, inclusive com a fala desligada. Verifique as regras da entrevista e avise os participantes quando a captação ou o envio de áudio exigir consentimento.
