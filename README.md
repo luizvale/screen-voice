@@ -50,13 +50,15 @@ O executável não abre console. Ele começa calado e **continua ouvindo enquant
 
 | Atalho | Ação |
 | --- | --- |
-| `Ctrl+Alt+H` | Pede a próxima pista curta sobre a pergunta atual. |
+| `Ctrl+Alt+H` | Pede o próximo passo de implementação, sem repetir a pista anterior. |
 | `Ctrl+Alt+A` | Pede uma resposta mais completa para estudo. |
-| `Ctrl+Alt+E` | Captura o monitor principal, identifica o exercício visível e pede a primeira pista. |
+| `Ctrl+Alt+E` | Captura o monitor principal, identifica o exercício visível e pede o primeiro passo para escrever no código. |
 | `Ctrl+Alt+L` | Interrompe a fala atual; a escuta continua. |
 | `Ctrl+Alt+Shift+L` | Encerra a sessão e a cobrança. |
 
 A dica espera uma pausa de cerca de meio segundo antes de tocar e é cortada quando uma nova fala é detectada no microfone. Durante a janela da resposta, o loopback da chamada fica suspenso para que a própria voz do agente não interrompa a dica. `Ctrl+Alt+E` envia a captura à API OpenAI somente quando acionado. O registro de estado e erros fica em `%LOCALAPPDATA%\screen-voice\screen-voice-live.log`; não inclui gravações, transcrições ou capturas.
+
+Para avançar no mesmo exercício, use `Ctrl+Alt+H` depois de `Ctrl+Alt+E`. Pressionar `Ctrl+Alt+E` de novo recaptura a tela e pede novamente o primeiro passo.
 
 Para conferir os dispositivos de áudio sem usar a API, execute `.\target\release\screen-voice-live.exe --check-audio` e leia a última linha do log. Essa verificação dura dois segundos e informa se o microfone e o loopback da saída foram inicializados; ela não comprova ainda a qualidade de uma chamada real.
 
