@@ -119,7 +119,7 @@ fn push_mono(queue: &Queue, data: &[f32], channels: usize, input_rate: usize, ph
     while samples.len() > RATE * 2 { samples.pop_front(); }
 }
 
-fn capture_stream(device: &cpal::Device, queue: Queue, feedback: Option<Arc<AtomicBool>>) -> Result<cpal::Stream, Box<dyn Error>> {
+fn capture_stream(device: &cpal::Device, queue: Queue, mute: Option<Arc<AtomicBool>>) -> Result<cpal::Stream, Box<dyn Error>> {
     // CPAL ativa loopback ao abrir uma saída como entrada, mas a configuração
     // desse dispositivo deve ser obtida pela API de saída.
     let supported = device.default_input_config().or_else(|_| device.default_output_config())?;
@@ -133,14 +133,14 @@ fn capture_stream(device: &cpal::Device, queue: Queue, feedback: Option<Arc<Atom
         cpal::SampleFormat::F32 => {
             let mut phase = 0;
             device.build_input_stream(config.clone(), move |data: &[f32], _| {
-                if feedback.as_ref().is_some_and(|guard| guard.load(Ordering::Relaxed)) { queue.lock().unwrap().clear(); return }
+                if mute.as_ref().is_some_and(|guard| guard.load(Ordering::Relaxed)) { queue.lock().unwrap().clear(); return }
                 push_mono(&queue, data, channels, rate, &mut phase);
             }, on_error, None)?
         }
         cpal::SampleFormat::I16 => {
             let mut phase = 0;
             device.build_input_stream(config.clone(), move |data: &[i16], _| {
-                if feedback.as_ref().is_some_and(|guard| guard.load(Ordering::Relaxed)) { queue.lock().unwrap().clear(); return }
+                if mute.as_ref().is_some_and(|guard| guard.load(Ordering::Relaxed)) { queue.lock().unwrap().clear(); return }
                 let samples: Vec<f32> = data.iter().map(|x| *x as f32 / 32768.0).collect();
                 push_mono(&queue, &samples, channels, rate, &mut phase);
             }, on_error, None)?
@@ -148,7 +148,7 @@ fn capture_stream(device: &cpal::Device, queue: Queue, feedback: Option<Arc<Atom
         cpal::SampleFormat::U16 => {
             let mut phase = 0;
             device.build_input_stream(config.clone(), move |data: &[u16], _| {
-                if feedback.as_ref().is_some_and(|guard| guard.load(Ordering::Relaxed)) { queue.lock().unwrap().clear(); return }
+                if mute.as_ref().is_some_and(|guard| guard.load(Ordering::Relaxed)) { queue.lock().unwrap().clear(); return }
                 let samples: Vec<f32> = data.iter().map(|x| (*x as f32 - 32768.0) / 32768.0).collect();
                 push_mono(&queue, &samples, channels, rate, &mut phase);
             }, on_error, None)?
@@ -313,7 +313,7 @@ async fn run() -> Result<(), Box<dyn Error>> {
     let feedback = Arc::new(AtomicBool::new(false));
     let _mic = capture_stream(&mic_device, mic_queue.clone(), None)?;
     // WASAPI/CPAL: usar a saída como entrada ativa o loopback do dispositivo.
-    let _call = capture_stream(&call_device, call_queue.clone(), Some(feedback.clone()))?;
+    let _call = capture_stream(&call_device, call_queue.clone(), Some(enabled.clone()))?;
     let _speaker = playback_stream(&call_device, play_queue.clone(), enabled.clone(), human_speaking.clone(), feedback.clone())?;
     let (hot_tx, mut hot_rx) = mpsc::unbounded_channel();
     spawn_hotkeys(hot_tx)?;
@@ -375,7 +375,7 @@ async fn run() -> Result<(), Box<dyn Error>> {
                     heard_output = true;
                     if let Some(at) = requested_at { log_event(&format!("primeiro áudio reproduzido após {} ms", at.elapsed().as_millis())); }
                 }
-                if human_active && heard_output {
+                if enabled.load(Ordering::SeqCst) && human_active && heard_output {
                     enabled.store(false, Ordering::SeqCst);
                     play_queue.lock().unwrap().clear();
                     requested_at = None;
@@ -451,6 +451,7 @@ async fn run() -> Result<(), Box<dyn Error>> {
                 screen_request_active = false;
                 pending_exercise_context = None;
                 play_queue.lock().unwrap().clear();
+                call_queue.lock().unwrap().clear();
                 enabled.store(true, Ordering::SeqCst);
                 requested_at = Some(Instant::now());
                 last_audio_delta = None;
@@ -500,6 +501,7 @@ async fn run() -> Result<(), Box<dyn Error>> {
                             if pending_exercise_context.as_ref().is_some_and(|(id, _)| value["client_event_id"].as_str() == Some(id.as_str())) {
                                 pending_exercise_context = None;
                                 play_queue.lock().unwrap().clear();
+                                call_queue.lock().unwrap().clear();
                                 enabled.store(true, Ordering::SeqCst);
                                 requested_at = Some(Instant::now());
                                 last_audio_delta = None;
