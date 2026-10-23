@@ -38,12 +38,13 @@ Se a API responder `429`, confira o código detalhado no log: ele distingue falt
 
 `screen-voice-live.exe` é um segundo executável. Ele usa o microfone padrão para sua voz e o loopback da saída de áudio padrão do Windows para a voz da videochamada. Envia a mistura ao GPT Live continuamente. A resposta do agente sai apenas no dispositivo de áudio padrão: selecione seu fone como saída padrão e verifique no aplicativo da chamada que o microfone selecionado é o seu microfone físico, não uma entrada virtual que inclua o áudio do agente.
 
-Compile e inicie **a partir da pasta do projeto**, com uma chave válida já configurada no ambiente do Windows:
+Compile uma vez na pasta do projeto:
 
 ```powershell
 cargo build --release --bin screen-voice-live
-.\target\release\screen-voice-live.exe
 ```
+
+Depois, dê dois cliques em `start-screen-voice-live.cmd`. Na primeira execução, cole sua chave da API no prompt local. Ela fica criptografada em `%LOCALAPPDATA%\screen-voice\openai-api-key.clixml` para a sua conta neste computador. Nas próximas vezes, use o mesmo iniciador sem redigitar a chave. Para trocar a chave, execute `.\start-screen-voice-live.cmd -Setup` no PowerShell da pasta do projeto. O iniciador abre o agente sem janela de console; abrir o `.exe` diretamente ainda exige `OPENAI_API_KEY` no ambiente.
 
 O executável não abre console. Ele começa calado e **continua ouvindo enquanto não fala**. Durante uma simulação consentida com um amigo, use:
 
